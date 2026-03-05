@@ -21,7 +21,10 @@ import {
   Eye,
   Code,
   Fingerprint,
-  ExternalLink
+  ExternalLink,
+  Sun,
+  Moon,
+  Cookie
 } from 'lucide-react';
 import {
   XAxis,
@@ -48,6 +51,18 @@ function App() {
     priceHistory: [],
     pnlHistory: []
   });
+  const [isLightMode, setIsLightMode] = useState(() => localStorage.getItem('theme') === 'light');
+  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem('cookieConsent'));
+
+  useEffect(() => {
+    if (isLightMode) {
+      document.body.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.body.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    }
+  }, [isLightMode]);
 
   const updateDashboard = async () => {
     try {
@@ -137,59 +152,50 @@ function App() {
           <button
             onClick={handleManualEval}
             disabled={evaluating}
-            className="action-btn"
-            style={{
-              background: 'rgba(99, 102, 241, 0.1)',
-              color: '#fff',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '1rem',
-              fontWeight: 700,
-              cursor: evaluating ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              fontSize: '0.85rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-            }}
+            className={`action-btn eval-btn ${evaluating ? 'loading' : ''}`}
           >
             {evaluating ? <RefreshCw size={18} className="spin" /> : <Zap size={18} fill={evaluating ? "none" : "#fff"} />}
-            Evaluate Market
+            <span>Evaluate Market</span>
           </button>
           <div className="status-badge" style={{ borderColor: `${currentModeColor}33` }}>
             <div className="status-dot" style={{ backgroundColor: currentModeColor }}></div>
             {status?.mode || 'OFFLINE'}
           </div>
+          <button
+            onClick={() => setIsLightMode(!isLightMode)}
+            className="action-btn theme-toggle"
+            title={isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
+          >
+            {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
         </div>
       </header>
 
       <div className="grid">
         {/* AGENT IDENTITY - TOP LEFT */}
-        <div className="card" style={{ gridColumn: 'span 2', background: `linear-gradient(135deg, rgba(13, 17, 30, 0.6) 0%, rgba(20, 26, 45, 0.4) 100%)`, borderLeft: `6px solid ${currentModeColor}` }}>
+        <div className="card identity-card" style={{ borderLeft: `6px solid ${currentModeColor}` }}>
           <div className="card-title">
             <Fingerprint size={16} color={currentModeColor} /> Agent Identity Matrix
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
-            <div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Handle</label>
-                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff' }}>{agent.name || 'RCIA_UNNAMED'}</span>
+          <div className="identity-grid">
+            <div className="identity-main">
+              <div className="identity-field">
+                <label>Handle</label>
+                <span className="handle-text">{agent.name || 'RCIA_UNNAMED'}</span>
               </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div className="id-tag"><Wallet size={14} /> {agent.owner?.slice(0, 10)}...</div>
-                <div className="id-tag"><Globe size={14} /> Base Mainnet</div>
+              <div className="identity-tags">
+                <div className="id-tag"><Wallet size={14} /> <span>{agent.owner?.slice(0, 10)}...</span></div>
+                <div className="id-tag"><Globe size={14} /> <span>Base Mainnet</span></div>
               </div>
             </div>
-            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', paddingLeft: '2rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', display: 'block', marginBottom: '0.2rem' }}>Agent Token</label>
-                <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '1.1rem' }}>{agent.id || '#000'}</span>
+            <div className="identity-meta">
+              <div className="identity-field">
+                <label>Agent Token</label>
+                <span className="token-text">{agent.id || '#000'}</span>
               </div>
-              <div>
-                <label style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', display: 'block', marginBottom: '0.2rem' }}>Registry</label>
-                <span style={{ fontSize: '0.8rem', opacity: 0.8, fontFamily: 'var(--font-mono)' }}>{agent.identity_registry?.slice(0, 12)}...</span>
+              <div className="identity-field">
+                <label>Registry</label>
+                <span className="registry-text">{agent.identity_registry?.slice(0, 12)}...</span>
               </div>
             </div>
           </div>
@@ -340,13 +346,13 @@ function App() {
           </div>
         </div>
 
-        <div className="card" style={{ gridColumn: 'span 2' }}>
+        <div className="card proofs-card">
           <div className="card-title">
             <Lock size={16} color="var(--success)" /> Cryptographic Proof Log
           </div>
-          <div className="artifact-list" style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="artifact-grid">
             {artifacts.length > 0 ? artifacts.slice(0, 6).map((art, idx) => (
-              <div key={idx} className="artifact-item" onClick={() => setSelectedArtifact(art)} style={{ cursor: 'pointer' }}>
+              <div key={idx} className="artifact-item" onClick={() => setSelectedArtifact(art)}>
                 <div className="artifact-info">
                   <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {art.event === 'RISK_REJECTION' ? <AlertTriangle size={16} color="var(--danger)" /> : <Code size={16} color="var(--accent)" />}
@@ -357,47 +363,39 @@ function App() {
                 <div className="artifact-hash"><Eye size={14} /> INSPECT</div>
               </div>
             )) : (
-              <div style={{ gridColumn: 'span 2', color: 'var(--text-dim)', fontSize: '0.9rem', textAlign: 'center', padding: '4rem' }}>
-                <div style={{ opacity: 0.2, marginBottom: '1rem' }}><Database size={48} style={{ margin: '0 auto' }} /></div>
+              <div className="empty-artifacts">
+                <div className="empty-icon"><Database size={48} /></div>
                 Awaiting cryptographic sequence...
               </div>
             )}
           </div>
         </div>
 
-        <div className="card">
+        <div className="card risk-card">
           <div className="card-title">
             <AlertTriangle size={16} color="var(--danger)" /> Risk Guardrails
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.25rem' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-dim)' }}>Daily Cumulative Loss</span>
-                <span style={{ color: 'var(--danger)' }}>2.0% MAX</span>
+          <div className="risk-content">
+            <div className="risk-metric">
+              <div className="metric-header">
+                <span className="label">Daily Cumulative Loss</span>
+                <span className="value danger">2.0% MAX</span>
               </div>
-              <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: '10%', height: '100%', background: 'var(--success)', borderRadius: '4px' }}></div>
+              <div className="progress-bar">
+                <div className="progress-fill success" style={{ width: '10%' }}></div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600 }}>
-              <span style={{ color: 'var(--text-dim)' }}>Protcol Exposure</span>
-              <span style={{ color: 'var(--success)' }}>{(risk.current_exposure * 100 || 0).toFixed(1)}%</span>
+            <div className="risk-row">
+              <span className="label">Protcol Exposure</span>
+              <span className="value success">{(risk.current_exposure * 100 || 0).toFixed(1)}%</span>
             </div>
 
-            <div style={{
-              marginTop: '0.5rem',
-              padding: '1.25rem',
-              background: 'rgba(16, 185, 129, 0.03)',
-              borderRadius: '1.25rem',
-              border: '1px solid rgba(16, 185, 129, 0.1)',
-              display: 'flex',
-              gap: '1rem'
-            }}>
+            <div className="safety-alert">
               <Shield color="var(--success)" size={24} style={{ flexShrink: 0 }} />
-              <div>
-                <strong style={{ display: 'block', color: '#fff', fontSize: '0.9rem', marginBottom: '0.2rem' }}>Safety Sequence Active</strong>
-                <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', lineHeight: 1.4 }}>Risk engine is actively monitoring on-chain liquidity depth.</p>
+              <div className="alert-text">
+                <strong>Safety Sequence Active</strong>
+                <p>Risk engine is actively monitoring on-chain liquidity depth.</p>
               </div>
             </div>
           </div>
@@ -409,24 +407,57 @@ function App() {
         <div className="modal-overlay" onClick={() => setSelectedArtifact(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ padding: '0.5rem', background: 'rgba(14, 165, 233, 0.1)', borderRadius: '0.75rem' }}>
+              <div className="header-title">
+                <div className="title-icon">
                   <Code size={20} color="var(--accent)" />
                 </div>
-                <h3 style={{ fontWeight: 800, fontSize: '1.25rem' }}>{selectedArtifact.event}</h3>
+                <h3>{selectedArtifact.event}</h3>
               </div>
-              <button onClick={() => setSelectedArtifact(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', opacity: 0.5 }}>×</button>
+              <button className="close-btn" onClick={() => setSelectedArtifact(null)}>×</button>
             </div>
-            <div style={{ background: '#04050a', padding: '1.5rem', borderRadius: '1rem', marginTop: '2rem', border: '1px solid var(--border)' }}>
-              <pre style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#94a3b8', overflowX: 'auto' }}>
+            <div className="modal-body">
+              <pre>
                 {JSON.stringify(selectedArtifact, null, 2)}
               </pre>
             </div>
-            <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--success)' }}>
+            <div className="modal-footer">
               <Lock size={14} />
-              <span style={{ opacity: 0.8 }}>EIP-712 Signature: </span>
-              <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.6 }}>{selectedArtifact.signature?.slice(0, 32)}...</span>
+              <span className="label">EIP-712 Signature: </span>
+              <span className="sig-text">{selectedArtifact.signature?.slice(0, 32)}...</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* COOKIE CONSENT BANNER */}
+      {!cookieConsent && (
+        <div className="cookie-banner">
+          <div className="cookie-header">
+            <Cookie size={24} color="var(--primary)" />
+            <h4>Protocol Personalization</h4>
+          </div>
+          <p className="cookie-text">
+            We use cookies to save your theme preferences and personalize your RCIA experience. We value your data sovereignty.
+          </p>
+          <div className="cookie-actions">
+            <button
+              className="accept-btn"
+              onClick={() => {
+                localStorage.setItem('cookieConsent', 'accepted');
+                setCookieConsent('accepted');
+              }}
+            >
+              Accept All
+            </button>
+            <button
+              className="necessary-btn"
+              onClick={() => {
+                localStorage.setItem('cookieConsent', 'necessary');
+                setCookieConsent('necessary');
+              }}
+            >
+              Necessary Only
+            </button>
           </div>
         </div>
       )}
