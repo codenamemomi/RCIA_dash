@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000/api/v1';
+const API_BASE = 'https://api.konasalti.com/rcia/api/v1';
 
 export const fetchDashboardData = async () => {
     try {
