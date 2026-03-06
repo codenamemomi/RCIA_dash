@@ -37,7 +37,7 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { fetchDashboardData, triggerEvaluation } from './services/api';
+import { fetchDashboardData, triggerEvaluation, claimCapital } from './services/api';
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -49,8 +49,10 @@ function App() {
     artifacts: [],
     tradeHistory: [],
     priceHistory: [],
-    pnlHistory: []
+    pnlHistory: [],
+    sandbox: { balance: 0 }
   });
+  const [claiming, setClaiming] = useState(false);
   const [isLightMode, setIsLightMode] = useState(() => localStorage.getItem('theme') === 'light');
   const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem('cookieConsent'));
 
@@ -74,6 +76,7 @@ function App() {
         reputation: result.reputation,
         artifacts: result.artifacts,
         tradeHistory: result.tradeHistory,
+        sandbox: result.sandbox,
         priceHistory: [...prev.priceHistory, result.pricePoint].slice(-20),
         pnlHistory: [...prev.pnlHistory, result.pnlPoint].slice(-20)
       }));
@@ -88,6 +91,13 @@ function App() {
     await triggerEvaluation();
     await updateDashboard();
     setEvaluating(false);
+  };
+
+  const handleClaimCapital = async () => {
+    setClaiming(true);
+    await claimCapital();
+    await updateDashboard();
+    setClaiming(false);
   };
 
   useEffect(() => {
@@ -114,7 +124,7 @@ function App() {
     );
   }
 
-  const { status, reputation, artifacts, tradeHistory, priceHistory, pnlHistory } = data;
+  const { status, reputation, artifacts, tradeHistory, priceHistory, pnlHistory, sandbox } = data;
   const metrics = status?.metrics || {};
   const risk = status?.risk || {};
   const agent = status?.agent || {};
@@ -157,6 +167,19 @@ function App() {
             {evaluating ? <RefreshCw size={18} className="spin" /> : <Zap size={18} fill={evaluating ? "none" : "#fff"} />}
             <span>Evaluate Market</span>
           </button>
+          <button
+            onClick={handleClaimCapital}
+            disabled={claiming || sandbox?.balance > 0}
+            className={`action-btn claim-btn ${claiming ? 'loading' : ''}`}
+            style={{
+              background: sandbox?.balance > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+              borderColor: sandbox?.balance > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(99, 102, 241, 0.3)',
+              color: sandbox?.balance > 0 ? '#10b981' : '#fff'
+            }}
+          >
+            {claiming ? <RefreshCw size={18} className="spin" /> : (sandbox?.balance > 0 ? <CheckCircle2 size={18} /> : <Wallet size={18} />)}
+            <span>{sandbox?.balance > 0 ? 'Capital Claimed' : 'Claim Sandbox'}</span>
+          </button>
           <div className="status-badge" style={{ borderColor: `${currentModeColor}33` }}>
             <div className="status-dot" style={{ backgroundColor: currentModeColor }}></div>
             {status?.mode || 'OFFLINE'}
@@ -194,8 +217,8 @@ function App() {
                 <span className="token-text">{agent.id || '#000'}</span>
               </div>
               <div className="identity-field">
-                <label>Registry</label>
-                <span className="registry-text">{agent.identity_registry?.slice(0, 12)}...</span>
+                <label>Smart Account</label>
+                <span className="registry-text" title={agent.smart_account}>{agent.smart_account?.slice(0, 20)}...</span>
               </div>
             </div>
           </div>
@@ -211,6 +234,18 @@ function App() {
           </div>
           <div className="stat-sub" style={{ color: 'var(--success)' }}>
             <CheckCircle2 size={16} /> Verifiable Grade A
+          </div>
+        </div>
+
+        <div className="card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)' }}>
+          <div className="card-title">
+            <Wallet size={16} color="var(--primary)" /> Sandbox Capital
+          </div>
+          <div className="stat-value">
+            {sandbox?.balance || 0} <span style={{ fontSize: '1rem', opacity: 0.4, fontWeight: 400 }}>TEST_ETH</span>
+          </div>
+          <div className="stat-sub" style={{ color: 'var(--primary)' }}>
+            <Cpu size={16} /> Sponsored by Alchemy
           </div>
         </div>
 
